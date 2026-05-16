@@ -262,7 +262,7 @@ async def mute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.restrict_chat_member(chat_id, target.id, perms, until_date=until)
         dur = f"{time_delta.days}д" if time_delta.days else f"{time_delta.seconds//3600}ч" if time_delta.seconds>=3600 else f"{time_delta.seconds//60}м"
-        await update.message.reply_text(f🔇 {target.full_name} замучен на {dur}. Причина: {reason}")
+        await update.message.reply_text(f"🔇 {target.full_name} замучен на {dur}. Причина: {reason}")
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {e}")
 
