@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Управление ботом</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: system-ui; padding: 16px; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
+        .card { background: var(--tg-theme-secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        button, .button { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; padding: 10px 16px; border-radius: 8px; width: 100%; margin-top: 8px; cursor: pointer; }
+        input, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--tg-theme-hint-color); background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); margin-bottom: 8px; }
+        .switch { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .item-list { margin: 10px 0; max-height: 200px; overflow-y: auto; }
+        .item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--tg-theme-hint-color); }
+        .item button { width: auto; background: #ff4d4d; margin: 0; padding: 4px 12px; }
+        h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Панель управления</h1>
+        <div class="card">
+            <h3>Авто-модерация</h3>
+            <div class="switch"><span>Включена</span><input type="checkbox" id="automod_enabled"></div>
+            <div class="switch"><span>Проверять ссылки</span><input type="checkbox" id="check_links"></div>
+            <div class="switch"><span>Проверять ключевые слова</span><input type="checkbox" id="check_keywords"></div>
+            <div class="switch"><span>Проверять флуд</span><input type="checkbox" id="check_flood"></div>
+            <label>Порог флуда (сообщений за 5с)</label><input type="number" id="flood_threshold">
+            <label>Действие на ссылку</label><select id="action_on_link"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
+            <label>Действие на слово</label><select id="action_on_keyword"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
+            <label>Действие на флуд</label><select id="action_on_flood"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
+            <label>Длительность мута (мин)</label><input type="number" id="mute_duration">
+            <label>Лимит предупреждений</label><input type="number" id="warn_limit">
+        </div>
+        <div class="card">
+            <h3>Запрещённые слова</h3>
+            <div id="wordsList" class="item-list"></div>
+            <input type="text" id="newWord" placeholder="Новое слово">
+            <button onclick="addWord()">➕ Добавить слово</button>
+        </div>
+        <div class="card">
+            <h3>Администраторы бота</h3>
+            <div id="adminsList" class="item-list"></div>
+            <input type="text" id="newAdmin" placeholder="ID (число)">
+            <button onclick="addAdmin()">👥 Добавить админа</button>
+        </div>
+        <button onclick="closeApp()">Закрыть</button>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        let currentChatId = null;
+
+        function getChatIdFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const startapp = params.get('startapp');
+            if (startapp && startapp.startsWith('chat_')) {
+                return startapp.split('_')[1];
+            }
+            return null;
+        }
+
+        async function loadData() {
+            const res = await fetch(`/api/settings?chat_id=${currentChatId}`);
+            const data = await res.json();
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            const s = data.settings;
+            document.getElementById('automod_enabled').checked = s.automod_enabled;
+            document.getElementById('check_links').checked = s.check_links;
+            document.getElementById('check_keywords').checked = s.check_keywords;
+            document.getElementById('check_flood').checked = s.check_flood;
+            document.getElementById('flood_threshold').value = s.flood_threshold;
+            document.getElementById('action_on_link').value = s.action_on_link;
+            document.getElementById('action_on_keyword').value = s.action_on_keyword;
+            document.getElementById('action_on_flood').value = s.action_on_flood;
+            document.getElementById('mute_duration').value = s.mute_duration;
+            document.getElementById('warn_limit').value = s.warn_limit;
+
+            const wordsDiv = document.getElementById('wordsList');
+            wordsDiv.innerHTML = '';
+            data.words.forEach(w => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<span>${w}</span><button onclick="removeWord('${w}')">❌</button>`;
+                wordsDiv.appendChild(div);
+            });
+
+            const adminsDiv = document.getElementById('adminsList');
+            adminsDiv.innerHTML = '';
+            data.admins.forEach(a => {
+                const div = document.createElement('div');
+                div.className = 'item';
+                div.innerHTML = `<span>${a}</span><button onclick="removeAdmin(${a})">❌</button>`;
+                adminsDiv.appendChild(div);
+            });
+        }
+
+        async function saveSetting(key, value) {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'set_setting', chat_id: currentChatId, key, value})
+            });
+        }
+
+        function attachListeners() {
+            document.getElementById('automod_enabled').onchange = e => saveSetting('automod_enabled', e.target.checked);
+            document.getElementById('check_links').onchange = e => saveSetting('check_links', e.target.checked);
+            document.getElementById('check_keywords').onchange = e => saveSetting('check_keywords', e.target.checked);
+            document.getElementById('check_flood').onchange = e => saveSetting('check_flood', e.target.checked);
+            document.getElementById('flood_threshold').onchange = e => saveSetting('flood_threshold', parseInt(e.target.value));
+            document.getElementById('action_on_link').onchange = e => saveSetting('action_on_link', e.target.value);
+            document.getElementById('action_on_keyword').onchange = e => saveSetting('action_on_keyword', e.target.value);
+            document.getElementById('action_on_flood').onchange = e => saveSetting('action_on_flood', e.target.value);
+            document.getElementById('mute_duration').onchange = e => saveSetting('mute_duration', parseInt(e.target.value));
+            document.getElementById('warn_limit').onchange = e => saveSetting('warn_limit', parseInt(e.target.value));
+        }
+
+        async function addWord() {
+            const word = document.getElementById('newWord').value.trim();
+            if (!word) return;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'add_word', chat_id: currentChatId, word})
+            });
+            document.getElementById('newWord').value = '';
+            loadData();
+        }
+
+        async function removeWord(word) {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'remove_word', chat_id: currentChatId, word})
+            });
+            loadData();
+        }
+
+        async function addAdmin() {
+            const admin = document.getElementById('newAdmin').value.trim();
+            if (!admin || isNaN(admin)) {
+                alert('Введите числовой ID');
+                return;
+            }
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'add_admin', chat_id: currentChatId, admin})
+            });
+            document.getElementById('newAdmin').value = '';
+            loadData();
+        }
+
+        async function removeAdmin(adminId) {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: 'remove_admin', chat_id: currentChatId, admin_id: adminId})
+            });
+            loadData();
+        }
+
+        function closeApp() {
+            tg.close();
+        }
+
+        currentChatId = getChatIdFromURL();
+        if (!currentChatId) {
+            document.body.innerHTML = '<h2>Ошибка: не передан chat_id</h2>';
+        } else {
+            loadData();
+            attachListeners();
+        }
+    </script>
+</body>
+</html>
