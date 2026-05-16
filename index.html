@@ -2,183 +2,545 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Управление ботом</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Модератор бот — панель управления</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: system-ui; padding: 16px; background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); }
-        .card { background: var(--tg-theme-secondary-bg-color); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-        button, .button { background: var(--tg-theme-button-color); color: var(--tg-theme-button-text-color); border: none; padding: 10px 16px; border-radius: 8px; width: 100%; margin-top: 8px; cursor: pointer; }
-        input, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--tg-theme-hint-color); background: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); margin-bottom: 8px; }
-        .switch { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .item-list { margin: 10px 0; max-height: 200px; overflow-y: auto; }
-        .item { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--tg-theme-hint-color); }
-        .item button { width: auto; background: #ff4d4d; margin: 0; padding: 4px 12px; }
-        h3 { margin-top: 0; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #0B0B0B;
+            color: #FFFFFF;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* карточки */
+        .card {
+            background: #1E1E1E;
+            border-radius: 24px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #2C2C2C;
+            padding-bottom: 12px;
+        }
+
+        .avatar {
+            width: 48px;
+            height: 48px;
+            background: #2C2C2C;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .group-name {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .group-id {
+            font-size: 12px;
+            color: #8E8E93;
+            margin-top: 4px;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .setting-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* переключатель (toggle) */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px;
+            height: 28px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #3A3A3C;
+            transition: 0.2s;
+            border-radius: 28px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 24px;
+            width: 24px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.2s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #34C759;
+        }
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        /* выпадающие списки и кнопки */
+        select, .button-like {
+            background: #2C2C2E;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 30px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button {
+            background: #0A84FF;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 30px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+        button.secondary {
+            background: #2C2C2E;
+        }
+        .badge {
+            background: #2C2C2E;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 12px;
+        }
+        .words-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .word-item {
+            background: #2C2C2E;
+            border-radius: 20px;
+            padding: 6px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .remove-word {
+            background: none;
+            border: none;
+            color: #FF453A;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0;
+            padding: 0;
+            width: auto;
+        }
+        input[type="text"], input[type="number"] {
+            background: #2C2C2E;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 16px;
+            color: white;
+            width: 100%;
+            margin-bottom: 12px;
+            font-family: inherit;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .logo img {
+            width: 64px;
+            height: 64px;
+            border-radius: 20px;
+            background: #1E1E1E;
+            padding: 8px;
+        }
+        h1 {
+            font-size: 24px;
+            text-align: center;
+            margin-bottom: 8px;
+        }
+        .sub {
+            text-align: center;
+            color: #8E8E93;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #8E8E93;
+        }
+        hr {
+            border-color: #2C2C2C;
+            margin: 16px 0;
+        }
     </style>
 </head>
 <body>
-    <div id="app">
-        <h1>Панель управления</h1>
-        <div class="card">
-            <h3>Авто-модерация</h3>
-            <div class="switch"><span>Включена</span><input type="checkbox" id="automod_enabled"></div>
-            <div class="switch"><span>Проверять ссылки</span><input type="checkbox" id="check_links"></div>
-            <div class="switch"><span>Проверять ключевые слова</span><input type="checkbox" id="check_keywords"></div>
-            <div class="switch"><span>Проверять флуд</span><input type="checkbox" id="check_flood"></div>
-            <label>Порог флуда (сообщений за 5с)</label><input type="number" id="flood_threshold">
-            <label>Действие на ссылку</label><select id="action_on_link"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
-            <label>Действие на слово</label><select id="action_on_keyword"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
-            <label>Действие на флуд</label><select id="action_on_flood"><option>delete</option><option>warn</option><option>mute</option><option>ban</option></select>
-            <label>Длительность мута (мин)</label><input type="number" id="mute_duration">
-            <label>Лимит предупреждений</label><input type="number" id="warn_limit">
-        </div>
-        <div class="card">
-            <h3>Запрещённые слова</h3>
-            <div id="wordsList" class="item-list"></div>
-            <input type="text" id="newWord" placeholder="Новое слово">
-            <button onclick="addWord()">➕ Добавить слово</button>
-        </div>
-        <div class="card">
-            <h3>Администраторы бота</h3>
-            <div id="adminsList" class="item-list"></div>
-            <input type="text" id="newAdmin" placeholder="ID (число)">
-            <button onclick="addAdmin()">👥 Добавить админа</button>
-        </div>
-        <button onclick="closeApp()">Закрыть</button>
+<div class="container">
+    <div class="logo">
+        <img src="bot.png" alt="Логотип бота" onerror="this.style.display='none'">
     </div>
-    <script>
-        const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-        
-        let currentChatId = null;
+    <h1>⚙️ Модератор бот</h1>
+    <div class="sub">Управление группами, где есть бот</div>
 
-        function getChatIdFromURL() {
-            const params = new URLSearchParams(window.location.search);
-            const startapp = params.get('startapp');
-            if (startapp && startapp.startsWith('chat_')) {
-                return startapp.split('_')[1];
+    <div id="groupsList"></div>
+    <div id="noGroups" class="empty-state" style="display: none;">
+        🧩 Бот не добавлен ни в одну из ваших групп.<br>
+        Добавьте бота в группу и дайте права администратора.
+    </div>
+</div>
+
+<script>
+    // ========== КОНФИГУРАЦИЯ ==========
+    // Если у вас есть реальный API-сервер (Flask + бот) — укажите его URL
+    // Например: const API_BASE = "https://ваш-сервер.com/api";
+    const API_BASE = null;  // null — демо-режим с мок-данными
+    
+    // Получаем данные о пользователе из Telegram WebApp
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();  // на весь экран
+    
+    let currentUser = null;
+    if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+        currentUser = tg.initDataUnsafe.user;
+        console.log("Пользователь Telegram:", currentUser);
+    } else {
+        console.warn("WebApp не в Telegram, используем тестового пользователя");
+        currentUser = { id: 123456789, first_name: "Тестовый" };
+    }
+    
+    // Демо-данные (для теста дизайна, если нет API)
+    const mockGroups = [
+        {
+            id: -1001234567890,
+            title: "IT чат",
+            settings: {
+                automod_enabled: true,
+                check_links: true,
+                check_keywords: true,
+                check_flood: true,
+                action_on_link: "delete",
+                action_on_keyword: "warn",
+                action_on_flood: "mute",
+                flood_threshold: 5,
+                mute_duration: 10,
+                warn_limit: 3
+            },
+            words: ["спам", "реклама", "мат"],
+            admins: [7868534958, 987654321]
+        },
+        {
+            id: -1009876543210,
+            title: "Друзья",
+            settings: {
+                automod_enabled: false,
+                check_links: false,
+                check_keywords: false,
+                check_flood: false,
+                action_on_link: "delete",
+                action_on_keyword: "delete",
+                action_on_flood: "mute",
+                flood_threshold: 5,
+                mute_duration: 5,
+                warn_limit: 3
+            },
+            words: [],
+            admins: [7868534958]
+        }
+    ];
+    
+    async function loadGroups() {
+        if (API_BASE) {
+            // Реальный запрос к API: получаем список групп, где пользователь админ и есть бот
+            try {
+                const resp = await fetch(`${API_BASE}/my_groups?user_id=${currentUser.id}`);
+                const data = await resp.json();
+                if (data.groups) {
+                    renderGroups(data.groups);
+                } else {
+                    renderGroups([]);
+                }
+            } catch (err) {
+                console.error("Ошибка API:", err);
+                renderGroups(mockGroups); // fallback
             }
-            return null;
-        }
-
-        async function loadData() {
-            const res = await fetch(`/api/settings?chat_id=${currentChatId}`);
-            const data = await res.json();
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
-            const s = data.settings;
-            document.getElementById('automod_enabled').checked = s.automod_enabled;
-            document.getElementById('check_links').checked = s.check_links;
-            document.getElementById('check_keywords').checked = s.check_keywords;
-            document.getElementById('check_flood').checked = s.check_flood;
-            document.getElementById('flood_threshold').value = s.flood_threshold;
-            document.getElementById('action_on_link').value = s.action_on_link;
-            document.getElementById('action_on_keyword').value = s.action_on_keyword;
-            document.getElementById('action_on_flood').value = s.action_on_flood;
-            document.getElementById('mute_duration').value = s.mute_duration;
-            document.getElementById('warn_limit').value = s.warn_limit;
-
-            const wordsDiv = document.getElementById('wordsList');
-            wordsDiv.innerHTML = '';
-            data.words.forEach(w => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = `<span>${w}</span><button onclick="removeWord('${w}')">❌</button>`;
-                wordsDiv.appendChild(div);
-            });
-
-            const adminsDiv = document.getElementById('adminsList');
-            adminsDiv.innerHTML = '';
-            data.admins.forEach(a => {
-                const div = document.createElement('div');
-                div.className = 'item';
-                div.innerHTML = `<span>${a}</span><button onclick="removeAdmin(${a})">❌</button>`;
-                adminsDiv.appendChild(div);
-            });
-        }
-
-        async function saveSetting(key, value) {
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'set_setting', chat_id: currentChatId, key, value})
-            });
-        }
-
-        function attachListeners() {
-            document.getElementById('automod_enabled').onchange = e => saveSetting('automod_enabled', e.target.checked);
-            document.getElementById('check_links').onchange = e => saveSetting('check_links', e.target.checked);
-            document.getElementById('check_keywords').onchange = e => saveSetting('check_keywords', e.target.checked);
-            document.getElementById('check_flood').onchange = e => saveSetting('check_flood', e.target.checked);
-            document.getElementById('flood_threshold').onchange = e => saveSetting('flood_threshold', parseInt(e.target.value));
-            document.getElementById('action_on_link').onchange = e => saveSetting('action_on_link', e.target.value);
-            document.getElementById('action_on_keyword').onchange = e => saveSetting('action_on_keyword', e.target.value);
-            document.getElementById('action_on_flood').onchange = e => saveSetting('action_on_flood', e.target.value);
-            document.getElementById('mute_duration').onchange = e => saveSetting('mute_duration', parseInt(e.target.value));
-            document.getElementById('warn_limit').onchange = e => saveSetting('warn_limit', parseInt(e.target.value));
-        }
-
-        async function addWord() {
-            const word = document.getElementById('newWord').value.trim();
-            if (!word) return;
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'add_word', chat_id: currentChatId, word})
-            });
-            document.getElementById('newWord').value = '';
-            loadData();
-        }
-
-        async function removeWord(word) {
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'remove_word', chat_id: currentChatId, word})
-            });
-            loadData();
-        }
-
-        async function addAdmin() {
-            const admin = document.getElementById('newAdmin').value.trim();
-            if (!admin || isNaN(admin)) {
-                alert('Введите числовой ID');
-                return;
-            }
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'add_admin', chat_id: currentChatId, admin})
-            });
-            document.getElementById('newAdmin').value = '';
-            loadData();
-        }
-
-        async function removeAdmin(adminId) {
-            await fetch('/api/settings', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: 'remove_admin', chat_id: currentChatId, admin_id: adminId})
-            });
-            loadData();
-        }
-
-        function closeApp() {
-            tg.close();
-        }
-
-        currentChatId = getChatIdFromURL();
-        if (!currentChatId) {
-            document.body.innerHTML = '<h2>Ошибка: не передан chat_id</h2>';
         } else {
-            loadData();
-            attachListeners();
+            // Демо-режим
+            renderGroups(mockGroups);
         }
-    </script>
+    }
+    
+    async function saveSetting(chatId, key, value) {
+        if (API_BASE) {
+            await fetch(`${API_BASE}/settings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, action: "set_setting", key, value })
+            });
+        } else {
+            console.log("Демо: изменение", chatId, key, value);
+            // в демо просто обновляем локально
+        }
+    }
+    
+    async function addWord(chatId, word) {
+        if (!word.trim()) return;
+        if (API_BASE) {
+            await fetch(`${API_BASE}/settings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, action: "add_word", word })
+            });
+        } else {
+            console.log("Демо: добавить слово", chatId, word);
+        }
+        // обновляем интерфейс (перерисовка)
+        loadGroups();
+    }
+    
+    async function removeWord(chatId, word) {
+        if (API_BASE) {
+            await fetch(`${API_BASE}/settings`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, action: "remove_word", word })
+            });
+        } else {
+            console.log("Демо: удалить слово", chatId, word);
+        }
+        loadGroups();
+    }
+    
+    function renderGroups(groups) {
+        const container = document.getElementById("groupsList");
+        const noGroupsDiv = document.getElementById("noGroups");
+        if (!groups || groups.length === 0) {
+            container.innerHTML = "";
+            noGroupsDiv.style.display = "block";
+            return;
+        }
+        noGroupsDiv.style.display = "none";
+        container.innerHTML = "";
+        
+        groups.forEach(group => {
+            const card = document.createElement("div");
+            card.className = "card";
+            
+            // заголовок
+            const header = `
+                <div class="card-header">
+                    <div class="avatar">👥</div>
+                    <div>
+                        <div class="group-name">${escapeHtml(group.title || "Без названия")}</div>
+                        <div class="group-id">ID: ${group.id}</div>
+                    </div>
+                </div>
+            `;
+            card.innerHTML = header;
+            
+            // секция авто-модерации
+            const s = group.settings;
+            const settingsHtml = `
+                <div class="setting-row">
+                    <span class="setting-label">🤖 Авто-модерация</span>
+                    <label class="switch">
+                        <input type="checkbox" class="toggle-automod" data-chat="${group.id}" ${s.automod_enabled ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>🔗 Проверять ссылки</span>
+                    <label class="switch">
+                        <input type="checkbox" class="toggle-links" data-chat="${group.id}" ${s.check_links ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>📝 Проверять ключевые слова</span>
+                    <label class="switch">
+                        <input type="checkbox" class="toggle-keywords" data-chat="${group.id}" ${s.check_keywords ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>💧 Проверять флуд</span>
+                    <label class="switch">
+                        <input type="checkbox" class="toggle-flood" data-chat="${group.id}" ${s.check_flood ? "checked" : ""}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="setting-row">
+                    <span>⚡ Действие на ссылку</span>
+                    <select class="action-link" data-chat="${group.id}">
+                        <option value="delete" ${s.action_on_link === "delete" ? "selected" : ""}>Удалить</option>
+                        <option value="warn" ${s.action_on_link === "warn" ? "selected" : ""}>Предупредить</option>
+                        <option value="mute" ${s.action_on_link === "mute" ? "selected" : ""}>Мут</option>
+                        <option value="ban" ${s.action_on_link === "ban" ? "selected" : ""}>Бан</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>⚠️ Действие на слово</span>
+                    <select class="action-word" data-chat="${group.id}">
+                        <option value="delete" ${s.action_on_keyword === "delete" ? "selected" : ""}>Удалить</option>
+                        <option value="warn" ${s.action_on_keyword === "warn" ? "selected" : ""}>Предупредить</option>
+                        <option value="mute" ${s.action_on_keyword === "mute" ? "selected" : ""}>Мут</option>
+                        <option value="ban" ${s.action_on_keyword === "ban" ? "selected" : ""}>Бан</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>🌊 Действие на флуд</span>
+                    <select class="action-flood" data-chat="${group.id}">
+                        <option value="delete" ${s.action_on_flood === "delete" ? "selected" : ""}>Удалить</option>
+                        <option value="warn" ${s.action_on_flood === "warn" ? "selected" : ""}>Предупредить</option>
+                        <option value="mute" ${s.action_on_flood === "mute" ? "selected" : ""}>Мут</option>
+                        <option value="ban" ${s.action_on_flood === "ban" ? "selected" : ""}>Бан</option>
+                    </select>
+                </div>
+                <div class="setting-row">
+                    <span>📊 Порог флуда (сообщений за 5с)</span>
+                    <input type="number" class="flood-threshold" data-chat="${group.id}" value="${s.flood_threshold}" style="width:80px;">
+                </div>
+                <div class="setting-row">
+                    <span>⏱️ Длительность мута (мин)</span>
+                    <input type="number" class="mute-duration" data-chat="${group.id}" value="${s.mute_duration}" style="width:80px;">
+                </div>
+                <div class="setting-row">
+                    <span>⚠️ Лимит предупреждений</span>
+                    <input type="number" class="warn-limit" data-chat="${group.id}" value="${s.warn_limit}" style="width:80px;">
+                </div>
+                <hr>
+                <div class="setting-label">🚫 Запрещённые слова</div>
+                <div class="words-list" id="words-${group.id}">
+                    ${group.words.map(w => `<span class="word-item">${escapeHtml(w)} <button class="remove-word" data-chat="${group.id}" data-word="${escapeHtml(w)}">✖️</button></span>`).join("")}
+                </div>
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <input type="text" id="newWord-${group.id}" placeholder="Новое слово" style="flex:1;">
+                    <button class="add-word-btn" data-chat="${group.id}" style="width:auto;">➕ Добавить</button>
+                </div>
+                <hr>
+                <div class="setting-label">👥 Администраторы бота</div>
+                <div style="margin:10px 0;">
+                    ${group.admins.map(uid => `<span class="badge">${uid}</span>`).join(" ")}
+                </div>
+            `;
+            card.insertAdjacentHTML("beforeend", settingsHtml);
+            container.appendChild(card);
+            
+            // привязываем события
+            attachCardEvents(group.id);
+        });
+    }
+    
+    function attachCardEvents(chatId) {
+        // toggles
+        document.querySelector(`.toggle-automod[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "automod_enabled", e.target.checked);
+        });
+        document.querySelector(`.toggle-links[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "check_links", e.target.checked);
+        });
+        document.querySelector(`.toggle-keywords[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "check_keywords", e.target.checked);
+        });
+        document.querySelector(`.toggle-flood[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "check_flood", e.target.checked);
+        });
+        // select
+        document.querySelector(`.action-link[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "action_on_link", e.target.value);
+        });
+        document.querySelector(`.action-word[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "action_on_keyword", e.target.value);
+        });
+        document.querySelector(`.action-flood[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "action_on_flood", e.target.value);
+        });
+        // inputs
+        document.querySelector(`.flood-threshold[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "flood_threshold", parseInt(e.target.value));
+        });
+        document.querySelector(`.mute-duration[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "mute_duration", parseInt(e.target.value));
+        });
+        document.querySelector(`.warn-limit[data-chat="${chatId}"]`)?.addEventListener("change", (e) => {
+            saveSetting(chatId, "warn_limit", parseInt(e.target.value));
+        });
+        // добавление слова
+        document.querySelector(`.add-word-btn[data-chat="${chatId}"]`)?.addEventListener("click", () => {
+            const input = document.getElementById(`newWord-${chatId}`);
+            const word = input.value.trim();
+            if (word) {
+                addWord(chatId, word);
+                input.value = "";
+            }
+        });
+        // удаление слов
+        document.querySelectorAll(`.remove-word[data-chat="${chatId}"]`).forEach(btn => {
+            btn.addEventListener("click", (e) => {
+                const word = btn.getAttribute("data-word");
+                removeWord(chatId, word);
+            });
+        });
+    }
+    
+    function escapeHtml(str) {
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === "&") return "&amp;";
+            if (m === "<") return "&lt;";
+            if (m === ">") return "&gt;";
+            return m;
+        });
+    }
+    
+    loadGroups();
+</script>
 </body>
 </html>
