@@ -2,11 +2,14 @@ import os
 import logging
 import sqlite3
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
 from fastapi import FastAPI, Request, BackgroundTasks
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatPermissions
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import (
+    Application, CommandHandler, CallbackQueryHandler, MessageHandler,
+    filters, ContextTypes, ConversationHandler   # <-- сюда добавлен ConversationHandler
+)
 from contextlib import asynccontextmanager
 
 # ------------------ КОНФИГ ------------------
@@ -262,6 +265,7 @@ async def mute_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         await context.bot.restrict_chat_member(chat_id, target.id, perms, until_date=until)
         dur = f"{time_delta.days}д" if time_delta.days else f"{time_delta.seconds//3600}ч" if time_delta.seconds>=3600 else f"{time_delta.seconds//60}м"
+        # ИСПРАВЛЕНА строка (была пропущена кавычка)
         await update.message.reply_text(f"🔇 {target.full_name} замучен на {dur}. Причина: {reason}")
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {e}")
@@ -375,13 +379,11 @@ async def automod_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     action = None
     reason = ""
-    # ссылки
     if settings.get("check_links"):
         import re
         if re.search(r"(https?://[^\s]+|www\.[^\s]+)", text, re.I):
             action = settings.get("action_on_link", "delete")
             reason = "ссылка"
-    # слова
     if not action and settings.get("check_keywords"):
         banned = get_banned_words(chat_id)
         for w in banned:
@@ -389,7 +391,6 @@ async def automod_check(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 action = settings.get("action_on_keyword", "delete")
                 reason = f"слово: {w}"
                 break
-    # флуд
     if not action and settings.get("check_flood"):
         now = datetime.now()
         key = f"{chat_id}_{user_id}"
@@ -429,7 +430,6 @@ async def apply_auto_action(update, context, action, reason, settings):
         await msg.reply_text(f"🚫 {msg.from_user.full_name} забанен за {reason}")
 
 # ------------------ Панель (инлайн) ------------------
-# Состояния для ConversationHandler
 ADD_WORD, ADD_ADMIN = 10, 11
 
 async def panel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -556,8 +556,7 @@ async def panel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.delete_message()
     return ConversationHandler.END
 
-# Обработчики ввода
-async def add_word_text(update: Update, context):
+async def add_word_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     word = update.message.text.strip().lower()
     if word:
         add_banned_word(update.effective_chat.id, word)
@@ -567,7 +566,7 @@ async def add_word_text(update: Update, context):
     await panel_callback(update, context)
     return ConversationHandler.END
 
-async def add_admin_text(update: Update, context):
+async def add_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     inp = update.message.text.strip()
     if not inp.isdigit():
         await update.message.reply_text("Нужен числовой ID")
@@ -595,9 +594,8 @@ ptb_app = Application.builder().token(TELEGRAM_TOKEN).build()
 ptb_app.add_handler(CommandHandler("panel", panel_command))
 ptb_app.add_handler(CallbackQueryHandler(panel_callback, pattern="^(automod|words|admins|warn_limit|back_main|close|toggle_links|toggle_words|toggle_flood|add_word|remove_word|add_admin|remove_admin|inc_warn|dec_warn|del_.*|rm_admin_.*)$"))
 ptb_app.add_handler(conv_handler)
-ptb_app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^\.[банмутанварн]'), lambda u,c: None))  # заглушка, ниже разберём
-# Команды с точкой обрабатываем отдельно через MessageHandler
-async def dot_handler(update: Update, context):
+
+async def dot_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     t = update.message.text
     if t.startswith(".бан"):
         await ban_command(update, context)
@@ -609,6 +607,7 @@ async def dot_handler(update: Update, context):
         await unban_command(update, context)
     elif t.startswith(".варн"):
         await warn_command(update, context)
+
 ptb_app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^\.[банмутанварн]'), dot_handler))
 ptb_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, automod_check))
 
@@ -636,10 +635,9 @@ async def webhook(request: Request, bg: BackgroundTasks):
 async def health():
     return {"status": "alive"}
 
-# ------------------ API для веб-приложения ------------------
 @fast_api.get("/api/my_groups")
 async def api_my_groups(user_id: int):
-    # Пока возвращаем тестовые данные. Потом доработаешь, чтобы реально получать группы из БД/Telegram
+    # Пока тестовые данные, потом заменишь на реальные
     test_groups = [
         {
             "id": -1001234567890,
